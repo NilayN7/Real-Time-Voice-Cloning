@@ -57,8 +57,13 @@ def linearspectrogram(wav, hparams):
     return S
 
 def melspectrogram(wav, hparams):
-    D = _stft(preemphasis(wav, hparams.preemphasis, hparams.preemphasize), hparams)
+    #print("This is the value of hparams.preemphasis: ", hparams.preemphasize)
+    D = _stft(preemphasis(wav, hparams.preemphasis, False), hparams)
+    #print("This is the shape of wav: ", wav)
+    print("This is the shape of D: ", D.shape)
+    #print("This is the value of D: ", np.abs(D))
     S = _amp_to_db(_linear_to_mel(np.abs(D), hparams), hparams) - hparams.ref_level_db
+    print("This is the value of S: ", S.shape)
     
     if hparams.signal_normalization:
         return _normalize(S, hparams)
@@ -157,6 +162,9 @@ def _linear_to_mel(spectogram, hparams):
     global _mel_basis
     if _mel_basis is None:
         _mel_basis = _build_mel_basis(hparams)
+    print("This is the value of mel_basis: ", _mel_basis.shape)
+    print("This is the value of spectogram: ", spectogram.shape)
+    #print("This is the value of np.dot(_mel_basis, spectogram): ", np.dot(_mel_basis, spectogram))
     return np.dot(_mel_basis, spectogram)
 
 def _mel_to_linear(mel_spectrogram, hparams):
@@ -172,6 +180,7 @@ def _build_mel_basis(hparams):
 
 def _amp_to_db(x, hparams):
     min_level = np.exp(hparams.min_level_db / 20 * np.log(10))
+    print("This is the shape of  20 * np.log10(np.maximum(min_level, x)): ", (20 * np.log10(np.maximum(min_level, x)).shape))
     return 20 * np.log10(np.maximum(min_level, x))
 
 def _db_to_amp(x):
