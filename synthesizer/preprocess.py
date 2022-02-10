@@ -10,11 +10,10 @@ import numpy as np
 import librosa
 
 
-def preprocess_dataset(datasets_root: Path, out_dir: Path, n_processes: int, skip_existing: bool, hparams,
-                       no_alignments: bool, datasets_name: str, subfolders: str):
+def preprocess_dataset(datasets_root: Path, out_dir: Path, n_processes: int, skip_existing: bool, hparams):
     # Gather the input directories
-    dataset_root = datasets_root.joinpath(datasets_name)
-    input_dirs = [dataset_root.joinpath(subfolder.strip()) for subfolder in subfolders.split(",")]
+    dataset_root = datasets_root
+    input_dirs = [dataset_root.joinpath("train-clean-100")]
     print("\n    ".join(map(str, ["Using data from:"] + input_dirs)))
     assert all(input_dir.exists() for input_dir in input_dirs)
 
@@ -28,10 +27,13 @@ def preprocess_dataset(datasets_root: Path, out_dir: Path, n_processes: int, ski
 
     # Preprocess the dataset
     speaker_dirs = list(chain.from_iterable(input_dir.glob("*") for input_dir in input_dirs))
+    #speaker_dirs = input_dirs
     func = partial(preprocess_speaker, out_dir=out_dir, skip_existing=skip_existing,
-                   hparams=hparams, no_alignments=no_alignments)
+                   hparams=hparams)
     job = Pool(n_processes).imap(func, speaker_dirs)
-    for speaker_metadata in tqdm(job, datasets_name, len(speaker_dirs), unit="speakers"):
+    #for i in job:
+    #  print("This is the value of i: ", i)
+    for speaker_metadata in tqdm(job, "LibriTTS1", len(speaker_dirs), unit="speakers"):
         for metadatum in speaker_metadata:
             metadata_file.write("|".join(str(x) for x in metadatum) + "\n")
     metadata_file.close()
@@ -50,19 +52,15 @@ def preprocess_dataset(datasets_root: Path, out_dir: Path, n_processes: int, ski
     print("Max audio timesteps length: %d" % max(int(m[3]) for m in metadata))
 
 
-def preprocess_speaker(speaker_dir, out_dir: Path, skip_existing: bool, hparams, no_alignments: bool):
+def preprocess_speaker(speaker_dir, out_dir: Path, skip_existing: bool, hparams):
     metadata = []
     for book_dir in speaker_dir.glob("*"):
-        if no_alignments:
-            # Gather the utterance audios and texts
-            # LibriTTS uses .wav but we will include extensions for compatibility with other datasets
-            extensions = ["*.wav", "*.flac", "*.mp3"]
-            for extension in extensions:
-                wav_fpaths = book_dir.glob(extension)
+                wav_fpaths = book_dir.glob("*.wav")
 
                 for wav_fpath in wav_fpaths:
                     # Load the audio waveform
                     wav, _ = librosa.load(str(wav_fpath), hparams.sample_rate)
+                    print("This si the value of np.abs(wav).max(): ", np.abs(wav).max(), wav_fpath)
                     if hparams.rescale:
                         wav = wav / np.abs(wav).max() * hparams.rescaling_max
 
@@ -81,33 +79,9 @@ def preprocess_speaker(speaker_dir, out_dir: Path, skip_existing: bool, hparams,
                     # Process the utterance
                     metadata.append(process_utterance(wav, text, out_dir, str(wav_fpath.with_suffix("").name),
                                                       skip_existing, hparams))
-        else:
-            # Process alignment file (LibriSpeech support)
-            # Gather the utterance audios and texts
-            try:
-                alignments_fpath = next(book_dir.glob("*.alignment.txt"))
-                with alignments_fpath.open("r") as alignments_file:
-                    alignments = [line.rstrip().split(" ") for line in alignments_file]
-            except StopIteration:
-                # A few alignment files will be missing
-                continue
-
-            # Iterate over each entry in the alignments file
-            for wav_fname, words, end_times in alignments:
-                wav_fpath = book_dir.joinpath(wav_fname + ".flac")
-                assert wav_fpath.exists()
-                words = words.replace("\"", "").split(",")
-                end_times = list(map(float, end_times.replace("\"", "").split(",")))
-
-                # Process each sub-utterance
-                wavs, texts = split_on_silences(wav_fpath, words, end_times, hparams)
-                for i, (wav, text) in enumerate(zip(wavs, texts)):
-                    sub_basename = "%s_%02d" % (wav_fname, i)
-                    metadata.append(process_utterance(wav, text, out_dir, sub_basename,
-                                                      skip_existing, hparams))
-
+    for m in metadata:
+      print("This is the value of m: ", m)
     return [m for m in metadata if m is not None]
-
 
 def split_on_silences(wav_fpath, words, end_times, hparams):
     # Load the audio waveform
@@ -202,16 +176,9 @@ def process_utterance(wav: np.ndarray, text: str, out_dir: Path, basename: str,
     if skip_existing and mel_fpath.exists() and wav_fpath.exists():
         return None
 
-    # Trim silence
-    if hparams.trim_silence:
-        wav = encoder.preprocess_wav(wav, normalize=False, trim_silence=True)
-
-    # Skip utterances that are too short
-    if len(wav) < hparams.utterance_min_duration * hparams.sample_rate:
-        return None
-
     # Compute the mel spectrogram
     mel_spectrogram = audio.melspectrogram(wav, hparams).astype(np.float32)
+    #print("This is the value of mel_spectrograms: ", mel_spectrogram.shape[1])
     mel_frames = mel_spectrogram.shape[1]
 
     # Skip utterances that are too long
@@ -223,6 +190,7 @@ def process_utterance(wav: np.ndarray, text: str, out_dir: Path, basename: str,
     np.save(wav_fpath, wav, allow_pickle=False)
 
     # Return a tuple describing this training example
+    print(wav_fpath.name, mel_fpath.name, "embed-%s.npy" % basename, len(wav), mel_frames, text)
     return wav_fpath.name, mel_fpath.name, "embed-%s.npy" % basename, len(wav), mel_frames, text
 
 
@@ -255,4 +223,3 @@ def create_embeddings(synthesizer_root: Path, encoder_model_fpath: Path, n_proce
     func = partial(embed_utterance, encoder_model_fpath=encoder_model_fpath)
     job = Pool(n_processes).imap(func, fpaths)
     list(tqdm(job, "Embedding", len(fpaths), unit="utterances"))
-
