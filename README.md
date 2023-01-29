@@ -18,7 +18,7 @@ SV2TTS is a deep learning framework in three stages. In the first stage, one cre
 |[1703.10135](https://arxiv.org/pdf/1703.10135.pdf) | Tacotron (synthesizer) | Tacotron: Towards End-to-End Speech Synthesis | [fatchord/WaveRNN](https://github.com/fatchord/WaveRNN)
 |[1710.10467](https://arxiv.org/pdf/1710.10467.pdf) | GE2E (encoder)| Generalized End-To-End Loss for Speaker Verification | This repo |
 
-## News
+<!-- ## News
 **10/01/22**: I recommend checking out [CoquiTTS](https://github.com/coqui-ai/tts). It's a good and up-to-date TTS repository targeted for the ML community. It can also do voice cloning and more, such as cross-language cloning or voice conversion.
 
 **28/12/21**: I've done a [major maintenance update](https://github.com/CorentinJ/Real-Time-Voice-Cloning/pull/961). Mostly, I've worked on making setup easier. Find new instructions in the section below.
@@ -29,7 +29,7 @@ SV2TTS is a deep learning framework in three stages. In the first stage, one cre
 - **If you just want to clone your voice (and not someone else's):** I recommend our free plan on [Resemble.AI](https://www.resemble.ai/). You will get a better voice quality and less prosody errors.
 - **If this is not your case:** proceed with this repository, but you might end up being disappointed by the results. If you're planning to work on a serious project, my strong advice: find another TTS repo. Go [here](https://github.com/CorentinJ/Real-Time-Voice-Cloning/issues/364) for more info.
 
-**20/08/19:** I'm working on [resemblyzer](https://github.com/resemble-ai/Resemblyzer), an independent package for the voice encoder (inference only). You can use your trained encoder models from this repo with it.
+**20/08/19:** I'm working on [resemblyzer](https://github.com/resemble-ai/Resemblyzer), an independent package for the voice encoder (inference only). You can use your trained encoder models from this repo with it. -->
 
 
 ## Setup
